@@ -39,4 +39,4 @@ manager = flask_restless.APIManager(app, flask_sqlalchemy_db=db)
 manager.create_api(SensorReadings, methods=['GET', 'POST', 'DELETE'])
 
 # start the flask loop
-app.run()
+app.run(host='192.168.0.176')
