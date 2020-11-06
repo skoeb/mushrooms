@@ -21,22 +21,28 @@ class Schema():
 
 class SensorReadings(Schema, db.Model):
     timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow, primary_key=True)
-    rand = db.Column(db.Integer, default=random.randint(0,1e6))
+    temperature = db.Column(db.Float, default=-100)
+    humidity = db.Column(db.Float, default=-100)
 
 SensorReadings.__table__.drop(db.engine)
 db.create_all()
 
-# --- create dummy data with ORM ---
-for i in range(10):
-    new = SensorReadings()
-    db.session.add(new)
-    db.session.commit()
+def is_token_valid(token):
+    return token in config.VALID_TOKENS
+
+def token_auth(**kwargs):
+    if 'authToken' not in flask.request.headers:
+         raise flask_restless.ProcessingException(code=402)
+    if not is_token_valid(flask.request.headers['authToken']):
+         raise flask_restless.ProcessingException(code=401)
 
 # Create the Flask-Restless API manager.
-manager = flask_restless.APIManager(app, flask_sqlalchemy_db=db)
+preprocessors = {'POST':[token_auth]} #'GET_COLLECTION': [token_auth], 
+manager = flask_restless.APIManager(app, flask_sqlalchemy_db=db, preprocessors=preprocessors)
 
 # Create API endpoints, which will be available at /api/<tablename>
+
 manager.create_api(SensorReadings, methods=['GET', 'POST', 'DELETE'])
 
 # start the flask loop
-app.run()
+app.run(host='192.168.0.176')
