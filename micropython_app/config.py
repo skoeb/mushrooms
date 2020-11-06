@@ -1,8 +1,8 @@
-WIFI_SSID = 'speed_of_light'
-WIFI_PASSWORD = '299792458'
+WIFI_SSID = 
+WIFI_PASSWORD = 
 
-API_URL = 'http://192.168.0.176:5000/api/sensor_readings'
-AUTH_TOKEN = 'sam'
+API_URL = 
+AUTH_TOKEN = 
 
 PIN_DICT = {
     'TX':1,
