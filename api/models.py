@@ -24,7 +24,7 @@ class SensorReadings(Schema, db.Model):
     temperature = db.Column(db.Float, default=-100)
     humidity = db.Column(db.Float, default=-100)
 
-SensorReadings.__table__.drop(db.engine)
+# SensorReadings.__table__.drop(db.engine)
 db.create_all()
 
 def is_token_valid(token):
