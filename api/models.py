@@ -21,13 +21,14 @@ class Schema():
 
 class SensorReadings(Schema, db.Model):
     timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow, primary_key=True)
-    rand = db.Column(db.Integer, default=random.randint(0,1e6))
+    temperature = db.Column(db.Numeric, default=None)
+    humidity = db.Column(db.Numeric, default=None)
 
-SensorReadings.__table__.drop(db.engine)
+# SensorReadings.__table__.drop(db.engine)
 db.create_all()
 
 # --- create dummy data with ORM ---
-for i in range(10):
+for i in range(3):
     new = SensorReadings()
     db.session.add(new)
     db.session.commit()

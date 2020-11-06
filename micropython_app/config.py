@@ -1,6 +1,9 @@
 WIFI_SSID = 'speed_of_light'
 WIFI_PASSWORD = '299792458'
 
+API_URL = 'http://192.168.0.176:5000/api/sensor_readings'
+AUTH_TOKEN = 'sam'
+
 PIN_DICT = {
     'TX':1,
     'RX':3,
