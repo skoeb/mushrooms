@@ -1,8 +1,10 @@
-WIFI_SSID = 
-WIFI_PASSWORD = 
+WIFI_SSID = 'speed_of_light'
+WIFI_PASSWORD = '299792458'
 
-API_URL = 
-AUTH_TOKEN = 
+LOG_INTERVAL = 60
+
+API_URL = 'http://192.168.0.176:5000/api/sensor_readings'
+AUTH_TOKEN = 'sam'
 
 PIN_DICT = {
     'TX':1,
@@ -19,5 +21,8 @@ PIN_DICT = {
     'SD2':9,
     'SD3':10,
     'LED1':2,
-    'LED2':16
+    'LED2':16,
+    'AO':17
 }
+
+DEBUG_PIN = 'D5'

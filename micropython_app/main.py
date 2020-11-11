@@ -9,7 +9,7 @@ import urequests
 import json
 
 def is_debug():
-    debug = machine.Pin(config.PIN_DICT['D5'], machine.Pin.IN, machine.Pin.PULL_UP)
+    debug = machine.Pin(config.PIN_DICT[config.DEBUG_PIN], machine.Pin.IN, machine.Pin.PULL_UP)
     if debug.value() == 0:
         print('Debug mode detected.')
         return True
@@ -26,6 +26,7 @@ def connect_wifi():
         while not sta_if.isconnected():
             time.sleep(1)
     print('Network config:', sta_if.ifconfig())
+
 
 def show_error():
     led = machine.Pin(config.PIN_DICT['LED1'], machine.Pin.OUT)
@@ -81,39 +82,80 @@ def post_data(data):
     Session = RequestRetry()
     r = Session.post(config.API_URL, data=json.dumps(data), headers=headers)
 
+def get_temperature_and_humidity():
+    power_pin = machine.Pin(config.PIN_DICT['D3'], mode=machine.Pin.OUT)
+    power_pin.on()
+    time.sleep(2)
+
+    sensor_pin = machine.Pin(config.PIN_DICT['D7'], machine.Pin.IN, machine.Pin.PULL_UP)
+    dht11 = dht.DHT11(sensor_pin)
+    
+    retry = 0
+    while retry < 3:
+        try:
+            dht11.measure()
+            break
+        except Exception:
+            retry +=1
+            time.sleep(2)
+            print('....retrying temperature and humidity measure')
+    
+    power_pin.off()
+
+    temperature = dht11.temperature()
+    humidity = dht11.humidity()
+    return {'temperature':temperature, 'humidity':humidity}
+
+def get_moisture():
+    power_pin = machine.Pin(config.PIN_DICT['D2'], mode=machine.Pin.OUT)
+    power_pin.on()
+    time.sleep(2)
+
+    sensor = machine.ADC(0)
+
+    retry = 0
+    while retry < 3:
+        try:
+            moisture_reading = sensor.read()
+            break
+        except Exception:
+            retry +=1
+            print('....retrying moisture measure')
+    
+    power_pin.off()
+
+    calc_moisture_pct = lambda x: 100 - ((x - 400)/(1024-400) * 100) #TODO: add 180k resistor https://arduino.stackexchange.com/questions/71949/voltage-divider-and-nodemcu-inputs
+    moisture_pct = calc_moisture_pct(moisture_reading)
+    return {'moisture_reading':moisture_reading, 'moisture_pct':moisture_pct}
+
+def deepsleep():
+    print('Going into deepsleep for:', config.LOG_INTERVAL)
+    rtc = machine.RTC()
+    rtc.irq(trigger=rtc.ALARM0, wake=machine.DEEPSLEEP)
+    rtc.alarm(rtc.ALARM0, config.LOG_INTERVAL * 1000)
+    machine.deepsleep()
 
 def run():
-    led = machine.Pin(config.PIN_DICT['LED1'], machine.Pin.OUT)
-    led2 = machine.Pin(config.PIN_DICT['LED2'], machine.Pin.OUT)
-    switch = machine.Pin(config.PIN_DICT['D5'], machine.Pin.IN, machine.Pin.PULL_UP)
-    sensor_pin = machine.Pin(config.PIN_DICT['D2'], machine.Pin.IN, machine.Pin.PULL_UP)
-    sensor = dht.DHT11(sensor_pin)
+
     connect_wifi()
-    time.sleep(5)
 
-    count = 1
-    switch_status = switch.value()
+    try:
+        led = machine.Pin(config.PIN_DICT['LED1'], machine.Pin.OUT)
+        led.off()
 
-    while True:
+        data = {}
+        data.update(get_temperature_and_humidity())
+        data.update(get_moisture())
 
-        try:
-            led.off()
-            led2.off()
-            
-            sensor.measure()
-            temp = sensor.temperature()
-            humidity = sensor.humidity()
-            data = {'temperature':temp, 'humidity':humidity}
-            print(data)
-            post_data(data)
+        print(data)
+        post_data(data)
+        led.on()
 
-            led.on()
-            led2.on()
-            time.sleep(10)
-
-
-        except Exception as exc:
-            sys.print_exception(exc)
-            show_error()
+    except Exception as exc:
+        sys.print_exception(exc)
+        show_error()
+    
+    if not is_debug():
+        deepsleep()
 
 run()
