@@ -26,3 +26,13 @@ PIN_DICT = {
 }
 
 DEBUG_PIN = 'D5'
+
+RELAYS = {
+    'temperature': {'low': 25, 'high': 30, 'pin': 'D8'},
+    'humidity': {'low': 85, 'high': 90, 'pin': 'D5'}
+}
+
+INTERMITTENTS = {
+    'fan': {'on_mins': 5, 'off_mins': 55, 'pin': 'D4'}
+}
+
