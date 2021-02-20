@@ -16,16 +16,14 @@ db = flask_sqlalchemy.SQLAlchemy(app)
 
 class Schema():
     __table_args__ = {
-        'schema': 'dummy'
+        'schema': 'public'
     }
 
 class Control(Schema, db.Model):
-    pin = db.Column(db.String, primary_key=True)
-    sensor = db.Column(db.String)
-    data_type = db.Column(db.String)
+    sensor = db.Column(db.String, primary_key=True)
+    data_type = db.Column(db.String, primary_key=True)
     device_type = db.Column(db.String)
     value = db.Column(db.Float)
-    __table_args__ = (db.UniqueConstraint(sensor, data_type),)
 
 class SensorReadings(Schema, db.Model):
     timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow, primary_key=True)
@@ -55,6 +53,7 @@ preprocessors = {'POST':[token_auth]} #'GET_COLLECTION': [token_auth],
 manager = flask_restless.APIManager(app, flask_sqlalchemy_db=db, preprocessors=preprocessors)
 
 # Create API endpoints, which will be available at /api/<tablename>
+manager.create_api(Control, methods=['GET', 'POST', 'DELETE'])
 manager.create_api(SensorReadings, methods=['GET', 'POST', 'DELETE'])
 
 # start the flask loop
