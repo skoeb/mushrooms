@@ -19,11 +19,25 @@ class Schema():
         'schema': 'dummy'
     }
 
+class Control(Schema, db.Model):
+    pin = db.Column(db.String, primary_key=True)
+    sensor = db.Column(db.String)
+    data_type = db.Column(db.String)
+    device_type = db.Column(db.String)
+    value = db.Column(db.Float)
+    __table_args__ = (db.UniqueConstraint(sensor, data_type),)
+
 class SensorReadings(Schema, db.Model):
     timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow, primary_key=True)
     temperature = db.Column(db.Float, default=-100)
     humidity = db.Column(db.Float, default=-100)
+    # moisture_reading = db.Column(db.Float, default=-100)
+    # moisture_pct = db.Column(db.Float, default=-100)
+    temperature_status = db.Column(db.Boolean)
+    humidity_status = db.Column(db.Boolean)
+    fan_status = db.Column(db.Boolean)
 
+# Control.__table__.drop(db.engine)
 # SensorReadings.__table__.drop(db.engine)
 db.create_all()
 
@@ -41,8 +55,7 @@ preprocessors = {'POST':[token_auth]} #'GET_COLLECTION': [token_auth],
 manager = flask_restless.APIManager(app, flask_sqlalchemy_db=db, preprocessors=preprocessors)
 
 # Create API endpoints, which will be available at /api/<tablename>
-
 manager.create_api(SensorReadings, methods=['GET', 'POST', 'DELETE'])
 
 # start the flask loop
-app.run(host='192.168.0.176')
+app.run(host='192.168.0.176', debug=False)
