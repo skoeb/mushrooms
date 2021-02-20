@@ -1,20 +1,21 @@
-from micropython_demo.config import INTERMITTENTS
 import config
 
 import dht
 import network
 import machine
-import time
-from datetime import datetime
+from ntptime import settime
+import utime
 import sys
 import urequests
 import json
 
+settime()
+
 def deepsleep():
-    print('Going into deepsleep for:', config.LOG_INTERVAL)
+    print('Going into deepsleep for:', config.INTERVAL)
     rtc = machine.RTC()
     rtc.irq(trigger=rtc.ALARM0, wake=machine.DEEPSLEEP)
-    rtc.alarm(rtc.ALARM0, config.LOG_INTERVAL * 1000)
+    rtc.alarm(rtc.ALARM0, config.INTERVAL * 1000)
     machine.deepsleep()
 
 def is_debug():
@@ -33,7 +34,7 @@ def connect_wifi():
         sta_if.active(True)
         sta_if.connect(config.WIFI_SSID, config.WIFI_PASSWORD)
         while not sta_if.isconnected():
-            time.sleep(1)
+            utime.sleep(1)
     print('Network config:', sta_if.ifconfig())
 
 
@@ -43,10 +44,10 @@ def show_error():
     for i in range(3):
         led.on()
         led2.off()
-        time.sleep(1)
+        utime.sleep(1)
         led.off()
         led2.on()
-        time.sleep(1)
+        utime.sleep(1)
     led.on()
     led2.on()
 
@@ -65,7 +66,7 @@ class RequestRetry():
         sleep_time = 0; attempt = 1; complete = False
         while (not complete) & (attempt < self.MAX_RETRIES):
             try:
-                time.sleep(sleep_time)
+                utime.sleep(sleep_time)
                 r = func(url, **kwargs)
                 complete = self._check_ok(r)
                 sleep_time = 2 ** (attempt * self.BACKOFF_FACTOR)
@@ -102,17 +103,22 @@ def get_temperature_and_humidity():
             break
         except Exception:
             retry +=1
-            time.sleep(2)
+            utime.sleep(2)
             print('....retrying temperature and humidity measure')
 
     temperature = dht11.temperature()
     humidity = dht11.humidity()
+
+    if temperature == 0:
+        temperature = 999
+    if humidity == 0:
+        humidity = 999
     return {'temperature': temperature, 'humidity': humidity}
 
 def get_moisture():
     power_pin = machine.Pin(config.PIN_DICT['D2'], mode=machine.Pin.OUT)
     power_pin.on()
-    time.sleep(2)
+    utime.sleep(2)
 
     sensor = machine.ADC(0)
 
@@ -123,6 +129,7 @@ def get_moisture():
             break
         except Exception:
             retry +=1
+            utime.sleep(2)
             print('....retrying moisture measure')
     
     power_pin.off()
@@ -133,37 +140,44 @@ def get_moisture():
 
 def _cycle_relay(pin, reading, status, low, high):
     r_pin = machine.Pin(config.PIN_DICT[pin], mode=machine.Pin.OUT)
-    
+    print('pin: {}, reading: {}, ({} {} / {})'.format(pin, reading, status, low, high))
     # if currently on, but not yet at upper thresh -> ON
     if status & (reading < high):
+        print('....keeping on relay pin {}'.format(pin))
         r_pin.on()
         return True # on
 
     # if below lower thresh -> ON
     elif reading <= low:
+        print('....turning on relay pin {}'.format(pin))
         r_pin.on()
         return True
     
     # if in stable range and off -> OFF
     else:
+        print('....turning off relay pin {}'.format(pin))
         r_pin.off()
         return False
 
 def _cycle_intermittent(pin, on_mins, off_mins):
     i_pin = machine.Pin(config.PIN_DICT[pin], mode=machine.Pin.OUT)
-    minute = datetime.now().minute
+    minute = utime.localtime()[4]
+    print('pin: {}, {} ({} / {}))'.format(pin, minute, on_mins, off_mins))
     if minute < on_mins:
+        print('....turning on inter pin {}'.format(pin))
         i_pin.on()
         return True
-    elif minute >= on_mins:
+    else:
+        print('....turning off inter pin {}'.format(pin))
         i_pin.off()
         return False
 
 def cycle_relays(data, p_status):
     status_dict = {}
     for relay, values in config.RELAYS.items():
-        status_dict[f"{relay}_status"] = _cycle_relay(
-            reading=data[relay], status=p_status[f"{relay}_status"], **values)
+        dict_key = "{}_status".format(relay)
+        status_dict[dict_key] = _cycle_relay(
+            reading=data[relay], status=p_status[dict_key], **values)
     
     led2 = machine.Pin(config.PIN_DICT['LED2'], machine.Pin.OUT)
     if any(status_dict.values()):
@@ -175,20 +189,31 @@ def cycle_relays(data, p_status):
 def cycle_intermittents(data, p_status):
     status_dict = {}
     for inter, values in config.INTERMITTENTS.items():
-        status_dict[f"{inter}_status"] = _cycle_intermittent(
+        dict_key = "{}_status".format(inter)
+        status_dict[dict_key] = _cycle_intermittent(
             **values
         )
     return status_dict
 
-def run():
+def turn_off_pins():
+    all_outputs = {}
+    all_outputs.update(config.RELAYS)
+    all_outputs.update(config.INTERMITTENTS)
+    for k,v in all_outputs.items():
+        pin = machine.Pin(config.PIN_DICT[v['pin']])
+        pin.on()
 
+
+def run():
+    turn_off_pins()
     connect_wifi()
-    relay_status = {f"{relay}_status": False for relay in config.RELAYS.keys()}
-    inter_status = {f"{inter}_status": False for inter in config.INTERMITTENTS.keys()}
+    relay_status = {"{}_status".format(r): False for r in config.RELAYS.keys()}
+    inter_status = {"{}_status".format(i): False for i in config.INTERMITTENTS.keys()}
 
     while True:
 
         try:
+            print('starting loop')
             led = machine.Pin(config.PIN_DICT['LED1'], machine.Pin.OUT)
             led.off()
 
@@ -208,7 +233,7 @@ def run():
         except Exception as exc:
             sys.print_exception(exc)
             show_error()
-        
-        time.sleep(60)
+        print('sleeping for {} seconds'.format(config.INTERVAL))
+        utime.sleep(config.INTERVAL)
 
 run()

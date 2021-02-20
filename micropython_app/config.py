@@ -1,7 +1,7 @@
 WIFI_SSID = 'speed_of_light'
 WIFI_PASSWORD = '299792458'
 
-LOG_INTERVAL = 60 * 5
+INTERVAL = 15 * 1
 
 API_URL = 'http://192.168.0.176:5000/api/sensor_readings'
 AUTH_TOKEN = 'sam'
@@ -25,4 +25,15 @@ PIN_DICT = {
     'AO':17
 }
 
-DEBUG_PIN = 'D5'
+DEBUG_PIN = 'SD2'
+
+RELAYS = {
+    'temperature': {'low': 25, 'high': 30, 'pin': 'D1'},
+    'humidity': {'low': 85, 'high': 90, 'pin': 'D5'}
+
+}
+
+INTERMITTENTS = {
+    'fan': {'on_mins': 5, 'off_mins': 55, 'pin': 'D2'}
+}
+
