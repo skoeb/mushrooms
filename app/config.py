@@ -3,7 +3,9 @@ WIFI_PASSWORD = '299792458'
 
 INTERVAL = 15 * 1
 
-API_URL = 'http://192.168.0.176:5000/api/sensor_readings'
+HOST = 'localhost'
+SENSOR_URL = 'http://{}:5000/api/sensor_readings'.format(HOST)
+CONTROL_URL = 'http://{}:5000/api/control'.format(HOST)
 AUTH_TOKEN = 'sam'
 
 PIN_DICT = {

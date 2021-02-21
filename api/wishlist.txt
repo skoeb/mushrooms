@@ -1,0 +1,37 @@
+-build dash front end
+-get userid from MAC address or something similar
+-require signup
+-allow multiple devices to be assigned to a userid
+-put database in docker container
+-run postgrest inside docker container
+-buy url
+-expose api over url
+-dash inside flask with auth? 
+
+tables:
+    -devices
+        -device_id
+        -user_id
+        -model
+    -users
+        -userid
+        -username
+        -email
+        -password
+        -timezone
+    -readings
+        -timestamp
+        -device_id
+        -temperature
+        -humidity
+        -co2
+    -status
+        -fan
+        -humidity
+        -temperature
+        -lights
+    -control
+        -device_type
+        -data_type
+        -value
+        -sensor
