@@ -67,26 +67,8 @@ def patch_data(data, url):
     Session = RequestRetry()
     r = Session.patch(url, data=json.dumps(data), headers=headers)
 
-
 def get_data(url):
     headers={'Content-Type':'application/json', 'Accept': 'application/json', 'authToken':config.AUTH_TOKEN}
     Session = RequestRetry()
     r = Session.get(url, headers=headers)
     return r
-
-def parse_control_api(r):
-    control_resp = r.json()['objects']
-    control_dicts = {}
-    for i in control_resp:
-        d = i['device_type']
-        k = i['sensor']
-        data_type = i['data_type']
-        value = i['value']
-
-        if d not in control_dicts:
-            control_dicts[d] = {}
-        if k not in control_dicts[d]:
-            control_dicts[d][k] = {}
-        control_dicts[d][k][data_type] = value
-
-    return control_dicts

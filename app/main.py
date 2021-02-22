@@ -111,13 +111,30 @@ def initialize_status(control):
     status.update({"{}_status".format(i): False for i in control['inter']})
     return status
 
+def parse_control_api(r):
+    control_resp = r.json()['objects']
+    control_dicts = {}
+    for i in control_resp:
+        d = i['device_type']
+        k = i['sensor']
+        data_type = i['data_type']
+        value = i['value']
+
+        if d not in control_dicts:
+            control_dicts[d] = {}
+        if k not in control_dicts[d]:
+            control_dicts[d][k] = {}
+        control_dicts[d][k][data_type] = value
+
+    return control_dicts
+
 def run():
     helper.turn_off_pins()
     helper.connect_wifi()
     settime()
 
-    control_r = connection.get_data(config.CONTROL_URL)
-    control = connection.parse_control_api(control_r)
+    control_response = connection.get_data(config.CONTROL_URL)
+    control = parse_control_api(control_response)
     status = initialize_status(control)
 
     while True:
