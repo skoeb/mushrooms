@@ -34,6 +34,8 @@ def get_temperature_and_humidity():
         temperature = 999
     if humidity == 0:
         humidity = 999
+
+    temperature = helper.celsius_to_fahrenheit(temperature)
     return {'temperature': temperature, 'humidity': humidity}
 
 def get_moisture():
@@ -96,13 +98,21 @@ def _cycle_intermittent(pin, on_mins, off_mins):
 def cycle_relays(reading, control, status):
     for relay, values in control['relay'].items():
         dict_key = "{}_status".format(relay)
-        status[dict_key] = _cycle_relay(reading=reading[relay], status=status[dict_key], **values)
+        pin = config.SENSOR_DICT[relay]
+        status[dict_key] = _cycle_relay(
+                pin=pin,
+                reading=reading[relay],
+                status=status[dict_key],
+                **values)
     return status
         
 def cycle_intermittents(reading, control, status):
     for inter, values in control['inter'].items():
         dict_key = "{}_status".format(inter)
-        status[dict_key] = _cycle_intermittent(**values)
+        pin = config.SENSOR_DICT[inter]
+        status[dict_key] = _cycle_intermittent(
+                                pin=pin,
+                                **values)
     return status
 
 def initialize_status(control):
@@ -133,13 +143,19 @@ def run():
     helper.connect_wifi()
     settime()
 
-    control_response = connection.get_data(config.CONTROL_URL)
-    control = parse_control_api(control_response)
-    status = initialize_status(control)
+    status = None
 
     while True:
 
         try:
+            print('')
+            print('fetching control')
+            control_response = connection.get_data(config.CONTROL_URL)
+            control = parse_control_api(control_response)
+            print(control)
+            if status is None:
+                status = initialize_status(control)
+
             print('starting loop')
             led = machine.Pin(config.PIN_DICT['LED1'], machine.Pin.OUT)
             led.off()
@@ -153,6 +169,8 @@ def run():
             status.update(relay_status)
             status.update(inter_status)
 
+            #TODO: move to seperate table
+            reading.update(status)
             print(reading)
             connection.post_data(reading, url=config.SENSOR_URL)
             led.on()

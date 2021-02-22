@@ -3,7 +3,7 @@ WIFI_PASSWORD = '299792458'
 
 INTERVAL = 15 * 1
 
-HOST = 'localhost'
+HOST = '192.168.0.176'
 SENSOR_URL = 'http://{}:5000/api/sensor_readings'.format(HOST)
 CONTROL_URL = 'http://{}:5000/api/control'.format(HOST)
 AUTH_TOKEN = 'sam'
@@ -28,6 +28,12 @@ PIN_DICT = {
 }
 
 DEBUG_PIN = 'SD2'
+
+SENSOR_DICT = {
+    'temperature': 'D1',
+    'humidity': 'D5',
+    'fan': 'D2'
+}
 
 RELAYS = {
     'temperature': {'low': 25, 'high': 30, 'pin': 'D1'},

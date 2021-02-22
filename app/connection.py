@@ -60,7 +60,7 @@ class RequestRetry():
 def post_data(data, url):
     headers={'Content-Type':'application/json', 'Accept': 'application/json', 'authToken':config.AUTH_TOKEN}
     Session = RequestRetry()
-    r = Session.post(url, data=json.dumps(data), headers=headers)
+    r = Session.post(url, data=data, headers=headers)
 
 def patch_data(data, url):
     headers={'Content-Type':'application/json', 'Accept': 'application/json', 'authToken':config.AUTH_TOKEN}

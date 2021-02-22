@@ -55,3 +55,6 @@ def turn_off_pins():
     for k,v in all_outputs.items():
         pin = machine.Pin(config.PIN_DICT[v['pin']])
         pin.on()
+
+def celsius_to_fahrenheit(c):
+    return (c * 9/5) + 32
