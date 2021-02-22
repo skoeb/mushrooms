@@ -19,6 +19,7 @@ tables:
         -email
         -password
         -timezone
+        -authtoken
     -readings
         -timestamp
         -device_id

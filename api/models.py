@@ -20,8 +20,9 @@ class Schema():
     }
 
 class Control(Schema, db.Model):
-    sensor = db.Column(db.String, primary_key=True)
-    data_type = db.Column(db.String, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)
+    sensor = db.Column(db.String)
+    data_type = db.Column(db.String)
     device_type = db.Column(db.String)
     value = db.Column(db.Float)
 
@@ -49,12 +50,12 @@ def token_auth(**kwargs):
          raise flask_restless.ProcessingException(code=401)
 
 # Create the Flask-Restless API manager.
-preprocessors = {'POST':[token_auth]} #'GET_COLLECTION': [token_auth], 
+preprocessors = {'POST': [token_auth], 'PATCH': [token_auth]} #'GET_COLLECTION': [token_auth], 
 manager = flask_restless.APIManager(app, flask_sqlalchemy_db=db, preprocessors=preprocessors)
 
 # Create API endpoints, which will be available at /api/<tablename>
-manager.create_api(Control, methods=['GET', 'POST', 'DELETE'])
+manager.create_api(Control, methods=['GET', 'POST', 'PATCH'], allow_patch_many=True)
 manager.create_api(SensorReadings, methods=['GET', 'POST', 'DELETE'])
 
 # start the flask loop
-app.run(host='192.168.0.176', debug=False)
+app.run(host='0.0.0.0', debug=False)
