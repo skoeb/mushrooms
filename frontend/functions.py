@@ -55,7 +55,7 @@ def update_control(t_values, h_values, f_value):
         data = row.to_dict()
         response = resources.patch_data(url, data)
         log.info(response)
-    
+    print(df_new)
     return df_new.to_json()
 
     

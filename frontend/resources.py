@@ -8,6 +8,8 @@ def get_data(url):
     headers={
         'Content-Type':'application/json',
         'Accept': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
         'authToken': config.AUTH_TOKEN
     }
 
@@ -40,7 +42,6 @@ def parse_control_api(r):
         control_dicts[d][k][data_type] = value
 
     return control_dicts
-
 
 def fetch_control():
     response = get_data(config.CONTROL_URL)
