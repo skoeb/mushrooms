@@ -46,16 +46,17 @@ def show_error():
 
 def turn_off_pins():
     all_outputs = {}
-    all_outputs.update(config.RELAYS)
-    all_outputs.update(config.INTERMITTENTS)
+    all_outputs.update(config.RELAY_PIN_DICT)
+    all_outputs.update(config.INPUT_PIN_DICT)
+    all_outputs.update(config.OUTPUT_PIN_DICT)
     for k,v in all_outputs.items():
-        pin = machine.Pin(config.PIN_DICT[v['pin']])
-        pin.on()
+        pin = machine.Pin(v)
+        pin.off()
 
 def celsius_to_fahrenheit(c):
     return (c * 9/5) + 32
 
 def get_device_id():
     r = machine.unique_id()
-    print(r)
-    return ubinascii.hexlify(r).decode('utf-8')
+    parsed = str(ubinascii.hexlify(r).decode('utf-8'))
+    return parsed

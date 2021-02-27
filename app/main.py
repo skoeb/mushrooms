@@ -15,12 +15,12 @@ import helper
 import connection
 
 def get_temperature_and_humidity():
-    sensor_pin = machine.Pin(
+    pin = machine.Pin(
         config.INPUT_PIN_DICT['dht11'],
         machine.Pin.IN,
         machine.Pin.PULL_UP)
-    dht11 = dht.DHT11(sensor_pin)
-    
+    dht11 = dht.DHT11(pin)
+
     retry = 0
     while retry < 3:
         try:
@@ -28,11 +28,12 @@ def get_temperature_and_humidity():
             break
         except Exception:
             retry +=1
-            time.sleep(2)
+            time.sleep(3)
             print('....retrying temperature and humidity measure')
 
     temperature = dht11.temperature()
     humidity = dht11.humidity()
+    pin.off()
 
     if temperature == 0:
         temperature = 999
@@ -66,7 +67,7 @@ def get_moisture():
     return {'moisture_reading':moisture_reading, 'moisture_pct':moisture_pct}
 
 def _cycle_relay(pin, reading, status, low, high):
-    r_pin = machine.Pin(config.PIN_DICT[pin], mode=machine.Pin.OUT)
+    r_pin = machine.Pin(pin, mode=machine.Pin.OUT)
     print('pin: {}, reading: {}, ({} {} / {})'.format(pin, reading, status, low, high))
     # if currently on, but not yet at upper thresh -> ON
     if status & (reading < high):
@@ -87,7 +88,7 @@ def _cycle_relay(pin, reading, status, low, high):
         return False
 
 def _cycle_intermittent(pin, on_mins, off_mins):
-    i_pin = machine.Pin(config.PIN_DICT[pin], mode=machine.Pin.OUT)
+    i_pin = machine.Pin(pin, mode=machine.Pin.OUT)
     minute = time.localtime()[4]
     print('pin: {}, {} ({} / {}))'.format(pin, minute, on_mins, off_mins))
     if minute < on_mins:
@@ -113,11 +114,14 @@ def set_neopixel(watts, r=1, g=1, b=1):
     output = tuple(output)
     print("Setting Lights to {} at {}%".format(output, round(pct*100,1)))
     
-    pin = machine.Pin(config.OUTPUT_PIN_DICT['neopixel'])
+    pin = machine.Pin(
+        config.OUTPUT_PIN_DICT['neopixel'],
+        machine.Pin.OUT)
     np = neopixel.NeoPixel(pin, n_pixels)
     for i in range(0, n_pixels):
         np[i] = output
     np.write()
+    pin.off()
 
 def cycle_relays(reading, control, status):
     for relay, values in control['relay'].items():
@@ -166,26 +170,30 @@ def run():
     helper.turn_off_pins()
     helper.connect_wifi()
     id = helper.get_device_id()
+    settime()
 
     status = None
 
     while True:
 
         try:
-            settime()
-            print('current time: {}'.format(time.localtime()))
-
             print('')
+            print('starting loop')
+            led = machine.Pin(config.PIN_DICT['LED2'], machine.Pin.OUT)
+            led.off()
+
+            minute = time.localtime()[4]
+            if minute % 60 == 0:
+                print('fetching time')
+                settime()
+                print('....current time: {}'.format(time.localtime()))
+
             print('fetching control')
             control_response = connection.get_data(config.CONTROL_URL)
             control = parse_control_api(control_response)
             print(control)
             if status is None:
                 status = initialize_status(control)
-
-            print('starting loop')
-            led = machine.Pin(config.PIN_DICT['LED2'], machine.Pin.OUT)
-            led.off()
 
             reading = {}
             reading.update(get_temperature_and_humidity())
@@ -196,14 +204,15 @@ def run():
             status.update(relay_status)
             status.update(inter_status)
 
-            if inter_status['lights']:
-                set_neopixel(1.5, 0.24, 0, 1)
+            if inter_status['lights_status']:
+                set_neopixel(1, 0.025, 0, 1)
 
             #TODO: move to seperate table
             reading.update(status)
             reading.update({'device_id': id})
             print(reading)
             connection.post_data(reading, url=config.SENSOR_URL)
+            print('done.')
             led.on()
 
         except Exception as exc:

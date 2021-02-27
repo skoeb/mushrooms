@@ -11,8 +11,8 @@ import json
 import config
 
 class RequestRetry():
-    MAX_RETRIES = 3
-    BACKOFF_FACTOR = 0.375 #should take ~1 minute to run through 10 retries
+    MAX_RETRIES = 10
+    BACKOFF_FACTOR = 0.5 #should take ~2 minute to run through 10 retries
     STATUS_WHITELIST = [200, 201, 204]
 
     def _check_ok(self, r):
@@ -22,7 +22,9 @@ class RequestRetry():
             return False
 
     def _with_retry(self, url, func, **kwargs):
-        sleep_time = 0; attempt = 1; complete = False
+        sleep_time = 0
+        attempt = 1
+        complete = False
         while (not complete) & (attempt < self.MAX_RETRIES):
             try:
                 time.sleep(sleep_time)
