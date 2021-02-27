@@ -19,6 +19,8 @@ class Schema():
         'schema': 'public'
     }
 
+class Devices(Schema, db.Model):
+    device_id = db.Column(db.String, primary_key=True)
 class Control(Schema, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     sensor = db.Column(db.String)
@@ -35,9 +37,12 @@ class SensorReadings(Schema, db.Model):
     temperature_status = db.Column(db.Boolean)
     humidity_status = db.Column(db.Boolean)
     fan_status = db.Column(db.Boolean)
+    lights_status = db.Column(db.Boolean)
+    device_id = db.Column(db.String, foreign_key=db.ForeignKey('devices.device_id'))
 
-# Control.__table__.drop(db.engine)
-# SensorReadings.__table__.drop(db.engine)
+
+Control.__table__.drop(db.engine)
+SensorReadings.__table__.drop(db.engine)
 db.create_all()
 
 def is_token_valid(token):

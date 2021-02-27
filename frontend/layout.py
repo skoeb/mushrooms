@@ -2,12 +2,10 @@ import dash
 import dash_daq as daq
 import dash_core_components as dcc
 import dash_html_components as html
+from importlib import reload
 
-import resources
 from resources import fetch_control
 import layout
-
-
 
 html_obj = html.Div(
     [
@@ -28,7 +26,7 @@ html_obj = html.Div(
                     ],
                     marks = {i: f"{i} °F" for i in range(60, 91, 5)},
                     allowCross=False,
-                    persistence=False,
+                    persistence=True,
                     persistence_type='local',
                 )
             ],
@@ -48,7 +46,7 @@ html_obj = html.Div(
                     ],
                     marks = {i: f"{i}%" for i in range(40, 101, 10)},
                     allowCross=False,
-                    persistence=False,
+                    persistence=True,
                     persistence_type='local',
                 )
             ],
@@ -64,13 +62,29 @@ html_obj = html.Div(
                     step=1,
                     value=fetch_control()['inter']['fan']['on_mins'],
                     marks = {i: f"{i} m" for i in range(0, 61, 10)},
-                    persistence=False,
+                    persistence=True,
                     persistence_type='local',
                 )
-            ])
-        ],
-        style={'padding': 20}, 
-        ),
+            ],
+            style={'padding': 20}, 
+            ), 
+
+            html.Div([
+                html.H4('Lights:'),
+                dcc.Slider(
+                    id='lights-slider',
+                    min=0, 
+                    max=60,
+                    step=1,
+                    value=fetch_control()['inter']['lights']['on_mins'],
+                    marks = {i: f"{i} m" for i in range(0, 61, 10)},
+                    persistence=True,
+                    persistence_type='local',
+                )
+            ],
+            style={'padding': 20}, 
+            )
+        ]),
 
         # html.Div(id='current-control-text'),
         # dcc.Interval(

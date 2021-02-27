@@ -27,10 +27,11 @@ log = logging.getLogger()
     [
         Input('temp-slider', 'value'),
         Input('humidity-slider', 'value'),
-        Input('fan-slider', 'value')
+        Input('fan-slider', 'value'),
+        Input('lights-slider', 'value')
     ]
 )
-def update_control(t_values, h_values, f_value):
+def update_control(t_values, h_values, f_value, l_value):
     response = resources.get_data(config.CONTROL_URL)
     control = response.json()['objects']
     df_orig = pd.DataFrame(control)
@@ -47,6 +48,10 @@ def update_control(t_values, h_values, f_value):
     f_mask = (df_new['sensor'] == 'fan')
     df_new.loc[f_mask & (df_new['data_type'] == 'on_mins'), 'value'] = f_value
     df_new.loc[f_mask & (df_new['data_type'] == 'off_mins'), 'value'] = 60 - f_value
+
+    l_mask = (df_new['sensor'] == 'lights')
+    df_new.loc[l_mask & (df_new['data_type'] == 'on_mins'), 'value'] = l_value
+    df_new.loc[l_mask & (df_new['data_type'] == 'off_mins'), 'value'] = 60 - l_value
 
     changes = (df_orig != df_new).any(1)
     to_patch = df_new[changes]
