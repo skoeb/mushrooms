@@ -30,18 +30,18 @@ PIN_DICT = {
 DEBUG_PIN = 'SD2'
 
 RELAY_PIN_DICT = {
-    'temperature': PIN_DICT['D3'],
-    'humidity': PIN_DICT['D4'],
-    'fan': PIN_DICT['D5'],
-    'lights': PIN_DICT['D6'],
+    'humidity': PIN_DICT['D5'],
+    'fan': PIN_DICT['D6'],
+    'temperature': PIN_DICT['D7'],
+    'lights': PIN_DICT['D8'],
 }
 
 INPUT_PIN_DICT = {
-    'dh11': PIN_DICT['D7'],
-    'sgp30_sda': PIN_DICT['D1'],
-    'sgp30_scl': PIN_DICT['D2']
+    'dht11': PIN_DICT['D2'],
+    'sgp30_scl': PIN_DICT['D1'],
+    'sgp30_sda': PIN_DICT['D2']
 }
 
 OUTPUT_PIN_DICT = {
-    'neopixel': PIN_DICT['D7'] 
+    'neopixel': PIN_DICT['D2'] 
 }
