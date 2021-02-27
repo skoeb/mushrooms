@@ -1,25 +1,24 @@
-import config
-
-import dht
-import network
 import machine
+import neopixel
 import time
-import sys
-import json
-import config
 
-def run():
-    led = machine.Pin(config.PIN_DICT['LED1'], machine.Pin.OUT)
-    led2 = machine.Pin(config.PIN_DICT['LED2'], machine.Pin.OUT)
-    power_pin = machine.Pin(config.PIN_DICT['D3'], mode=machine.Pin.OUT)
-    while True:
-        led.on()
-        power_pin.on()
-        led2.off()
-        time.sleep(5)
-        led.off()
-        power_pin.off()
-        led2.on()
-        time.sleep(5)
 
-run()
+def set_neopixel(watts, r=1, g=1, b=1):
+    n_pixels = 8
+    amps_per_pixel = 0.06
+    amps = n_pixels * amps_per_pixel
+    voltage = 5
+    max_watts = voltage * amps
+    
+    pct = watts / max_watts
+    output = [r, g, b]
+    output = [c * (255 * pct) for c in output]
+    output = [int(round(c, 0)) for c in output]
+    output = tuple(output)
+    print("Setting Lights to {} at {}%".format(output, round(pct*100,1)))
+    
+    pin = machine.Pin(2)
+    np = neopixel.NeoPixel(pin, n_pixels)
+    for i in range(0, n_pixels):
+        np[i] = output
+    np.write()

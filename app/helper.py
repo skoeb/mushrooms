@@ -1,5 +1,6 @@
 import network
 import machine
+import ubinascii
 
 try:
     import utime as time
@@ -36,17 +37,12 @@ def connect_wifi():
     print('Network config:', sta_if.ifconfig())
 
 def show_error():
-    led = machine.Pin(config.PIN_DICT['LED1'], machine.Pin.OUT)
-    led2 = machine.Pin(config.PIN_DICT['LED2'], machine.Pin.OUT)
-    for i in range(3):
-        led.on()
-        led2.off()
-        time.sleep(1)
+    led = machine.Pin(config.PIN_DICT['LED2'], machine.Pin.OUT)
+    for i in range(20):
         led.off()
-        led2.on()
-        time.sleep(1)
-    led.on()
-    led2.on()
+        time.sleep(0.25)
+        led.on()
+        time.sleep(0.25)
 
 def turn_off_pins():
     all_outputs = {}
@@ -55,3 +51,11 @@ def turn_off_pins():
     for k,v in all_outputs.items():
         pin = machine.Pin(config.PIN_DICT[v['pin']])
         pin.on()
+
+def celsius_to_fahrenheit(c):
+    return (c * 9/5) + 32
+
+def get_device_id():
+    r = machine.unique_id()
+    print(r)
+    return ubinascii.hexlify(r).decode('utf-8')

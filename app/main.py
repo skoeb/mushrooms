@@ -1,4 +1,5 @@
 import dht
+import neopixel
 import machine
 from ntptime import settime
 import sys
@@ -14,7 +15,10 @@ import helper
 import connection
 
 def get_temperature_and_humidity():
-    sensor_pin = machine.Pin(config.PIN_DICT['D7'], machine.Pin.IN, machine.Pin.PULL_UP)
+    sensor_pin = machine.Pin(
+        config.INPUT_PIN_DICT['dht11'],
+        machine.Pin.IN,
+        machine.Pin.PULL_UP)
     dht11 = dht.DHT11(sensor_pin)
     
     retry = 0
@@ -34,6 +38,8 @@ def get_temperature_and_humidity():
         temperature = 999
     if humidity == 0:
         humidity = 999
+
+    temperature = helper.celsius_to_fahrenheit(temperature)
     return {'temperature': temperature, 'humidity': humidity}
 
 def get_moisture():
@@ -93,16 +99,44 @@ def _cycle_intermittent(pin, on_mins, off_mins):
         i_pin.off()
         return False
 
+def set_neopixel(watts, r=1, g=1, b=1):
+    n_pixels = 8
+    amps_per_pixel = 0.06
+    amps = n_pixels * amps_per_pixel
+    voltage = 5
+    max_watts = voltage * amps
+    
+    pct = watts / max_watts
+    output = [r, g, b]
+    output = [c * (255 * pct) for c in output]
+    output = [int(round(c, 0)) for c in output]
+    output = tuple(output)
+    print("Setting Lights to {} at {}%".format(output, round(pct*100,1)))
+    
+    pin = machine.Pin(config.OUTPUT_PIN_DICT['neopixel'])
+    np = neopixel.NeoPixel(pin, n_pixels)
+    for i in range(0, n_pixels):
+        np[i] = output
+    np.write()
+
 def cycle_relays(reading, control, status):
     for relay, values in control['relay'].items():
         dict_key = "{}_status".format(relay)
-        status[dict_key] = _cycle_relay(reading=reading[relay], status=status[dict_key], **values)
+        pin = config.RELAY_PIN_DICT[relay]
+        status[dict_key] = _cycle_relay(
+                pin=pin,
+                reading=reading[relay],
+                status=status[dict_key],
+                **values)
     return status
         
 def cycle_intermittents(reading, control, status):
     for inter, values in control['inter'].items():
         dict_key = "{}_status".format(inter)
-        status[dict_key] = _cycle_intermittent(**values)
+        pin = config.RELAY_PIN_DICT[inter]
+        status[dict_key] = _cycle_intermittent(
+                                pin=pin,
+                                **values)
     return status
 
 def initialize_status(control):
@@ -131,17 +165,26 @@ def parse_control_api(r):
 def run():
     helper.turn_off_pins()
     helper.connect_wifi()
-    settime()
+    id = helper.get_device_id()
 
-    control_response = connection.get_data(config.CONTROL_URL)
-    control = parse_control_api(control_response)
-    status = initialize_status(control)
+    status = None
 
     while True:
 
         try:
+            settime()
+            print('current time: {}'.format(time.localtime()))
+
+            print('')
+            print('fetching control')
+            control_response = connection.get_data(config.CONTROL_URL)
+            control = parse_control_api(control_response)
+            print(control)
+            if status is None:
+                status = initialize_status(control)
+
             print('starting loop')
-            led = machine.Pin(config.PIN_DICT['LED1'], machine.Pin.OUT)
+            led = machine.Pin(config.PIN_DICT['LED2'], machine.Pin.OUT)
             led.off()
 
             reading = {}
@@ -153,6 +196,12 @@ def run():
             status.update(relay_status)
             status.update(inter_status)
 
+            if inter_status['lights']:
+                set_neopixel(1.5, 0.24, 0, 1)
+
+            #TODO: move to seperate table
+            reading.update(status)
+            reading.update({'device_id': id})
             print(reading)
             connection.post_data(reading, url=config.SENSOR_URL)
             led.on()
