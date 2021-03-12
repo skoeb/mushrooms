@@ -54,14 +54,17 @@ html_obj = html.Div(
             ),
 
             html.Div([
-                html.H4('Fan:'),
-                dcc.Slider(
-                    id='fan-slider',
-                    min=0, 
-                    max=60,
-                    step=1,
-                    value=fetch_control()['inter']['fan']['on_mins'],
-                    marks = {i: f"{i} m" for i in range(0, 61, 10)},
+                html.H4('CO2eq:'),
+                dcc.RangeSlider(
+                    id='co2eq-slider',
+                    min=min(0, fetch_control()['relay']['humidity']['low']), 
+                    max=max(10000, fetch_control()['relay']['humidity']['high']),
+                    step=100,
+                    value=[
+                        fetch_control()['relay']['co2eq']['low'],
+                        fetch_control()['relay']['co2eq']['high'],
+                    ],
+                    marks = {i: f"{i} g" for i in range(0, 10001, 1000)},
                     persistence=True,
                     persistence_type='local',
                 )

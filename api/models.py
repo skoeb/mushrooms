@@ -26,12 +26,15 @@ class Control(Schema, db.Model):
     sensor = db.Column(db.String)
     data_type = db.Column(db.String)
     device_type = db.Column(db.String)
+    limit = db.Column(db.String)
     value = db.Column(db.Float)
 
 class SensorReadings(Schema, db.Model):
     timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow, primary_key=True)
     temperature = db.Column(db.Float, default=-100)
     humidity = db.Column(db.Float, default=-100)
+    co2eq = db.Column(db.Float, default=-100)
+    tvoc = db.Column(db.Float, default=-100)
     # moisture_reading = db.Column(db.Float, default=-100)
     # moisture_pct = db.Column(db.Float, default=-100)
     temperature_status = db.Column(db.Boolean)
