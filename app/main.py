@@ -1,7 +1,9 @@
 import dht
 import neopixel
 import machine
+from machine import Pin
 from ntptime import settime
+import json
 import sys
 
 try:
@@ -10,15 +12,16 @@ except Exception as e:
     print(e)
     import time
 
+from adafruit_sgp30 import Adafruit_SGP30
 import config
 import helper
 import connection
 
 def get_temperature_and_humidity():
-    pin = machine.Pin(
-        config.INPUT_PIN_DICT['dht11'],
-        machine.Pin.IN,
-        machine.Pin.PULL_UP)
+    pin = Pin(
+            config.INPUT_PIN_DICT['dht11'],
+            Pin.IN,
+            Pin.PULL_UP)
     dht11 = dht.DHT11(pin)
 
     retry = 0
@@ -39,12 +42,10 @@ def get_temperature_and_humidity():
         temperature = 999
     if humidity == 0:
         humidity = 999
-
-    temperature = helper.celsius_to_fahrenheit(temperature)
     return {'temperature': temperature, 'humidity': humidity}
 
 def get_moisture():
-    power_pin = machine.Pin(config.PIN_DICT['D2'], mode=machine.Pin.OUT)
+    power_pin = Pin(config.PIN_DICT['D2'], mode=Pin.OUT)
     power_pin.on()
     time.sleep(2)
 
@@ -66,29 +67,90 @@ def get_moisture():
     moisture_pct = calc_moisture_pct(moisture_reading)
     return {'moisture_reading':moisture_reading, 'moisture_pct':moisture_pct}
 
-def _cycle_relay(pin, reading, status, low, high):
-    r_pin = machine.Pin(pin, mode=machine.Pin.OUT)
-    print('pin: {}, reading: {}, ({} {} / {})'.format(pin, reading, status, low, high))
-    # if currently on, but not yet at upper thresh -> ON
-    if status & (reading < high):
-        print('....keeping on relay pin {}'.format(pin))
-        r_pin.on()
-        return True # on
+def write_sgp30_baseline(sgp30):
+    disk_baseline = read_sgp30_baseline(sgp30)
+    cur_baseline = sgp30.get_iaq_baseline()
+    print('....comparing disk baseline {}, to current {}'.format(
+                                            disk_baseline, cur_baseline))
+    if disk_baseline != cur_baseline:
+        print('....writing new baseline to .json')
+        with open('sgp30_baseline.json', 'w') as handle:
+            json.dump(cur_baseline, handle)
 
-    # if below lower thresh -> ON
-    elif reading <= low:
-        print('....turning on relay pin {}'.format(pin))
-        r_pin.on()
-        return True
+def read_sgp30_baseline(sgp30):
+    try:
+        with open('sgp30_baseline.json', 'r') as handle:
+            baseline = json.load(handle)
+    except OSError:
+        baseline = [0, 0]
+    return baseline
+
+def initialize_sgp30():
+    scl = Pin(config.INPUT_PIN_DICT['sgp30_scl'])
+    sda = Pin(config.INPUT_PIN_DICT['sgp30_sda'])
+    i2c = machine.I2C(scl=scl, sda=sda)
+    sgp30 = Adafruit_SGP30(i2c)
+    sgp30.iaq_init()
+    iaq_baseline = read_sgp30_baseline(sgp30)
+    if iaq_baseline != [0, 0]:    
+        sgp30.set_iaq_baseline(*iaq_baseline)
+    print('....initialized sgp30, baseline: {}'.format(iaq_baseline))
+    return sgp30
+
+def get_co2(reading, sgp30):
+    sgp30.set_iaq_rel_humidity(
+        rh=reading['humidity'],
+        temp=reading['temperature']
+    )
+    co2eq, tvoc = sgp30.iaq_measure()
+    return {'co2eq': co2eq, 'tvoc': tvoc}
+
+def _cycle_relay(pin, reading, status, limit, low, high):
+    r_pin = Pin(pin, mode=Pin.OUT)
+    print('pin: {}, reading: {}, ({} {} {} / {})'.format(pin, reading, limit, status, low, high))
+
+    # for readings that we can raise
+    if limit == 'below':
+        # if currently on, but not yet at upper thresh -> ON
+        if status & (reading < high):
+            print('....keeping on relay pin {}'.format(pin))
+            r_pin.on()
+            return True # on
+
+        # if below lower thresh -> ON
+        elif reading <= low:
+            print('....turning on relay pin {}'.format(pin))
+            r_pin.on()
+            return True
+        
+        # if in stable range and off -> OFF
+        else:
+            print('....turning off relay pin {}'.format(pin))
+            r_pin.off()
+            return False
     
-    # if in stable range and off -> OFF
-    else:
-        print('....turning off relay pin {}'.format(pin))
-        r_pin.off()
-        return False
+    # for readings that we can lower
+    if limit == 'above':
+        # if currently on, but not yet below upper thresh -> ON
+        if status & (reading > high):
+            print('keeping on relay pin {}'.format(pin))
+            r_pin.on()
+            return True # on
 
-def _cycle_intermittent(pin, on_mins, off_mins):
-    i_pin = machine.Pin(pin, mode=machine.Pin.OUT)
+        # if above lower thresh -> ON
+        elif reading >= low:
+            print('....turning on relay pin {}'.format(pin))
+            r_pin.on()
+            return True
+        
+        # if in stable range and off -> OFF
+        else:
+            print('....turning off relay pin {}'.format(pin))
+            r_pin.off()
+            return False
+
+def _cycle_intermittent(pin, on_mins, off_mins, limit=None):
+    i_pin = Pin(pin, mode=Pin.OUT)
     minute = time.localtime()[4]
     print('pin: {}, {} ({} / {}))'.format(pin, minute, on_mins, off_mins))
     if minute < on_mins:
@@ -114,9 +176,7 @@ def set_neopixel(watts, r=1, g=1, b=1):
     output = tuple(output)
     print("Setting Lights to {} at {}%".format(output, round(pct*100,1)))
     
-    pin = machine.Pin(
-        config.OUTPUT_PIN_DICT['neopixel'],
-        machine.Pin.OUT)
+    pin = Pin(config.OUTPUT_PIN_DICT['neopixel'], Pin.OUT)
     np = neopixel.NeoPixel(pin, n_pixels)
     for i in range(0, n_pixels):
         np[i] = output
@@ -125,6 +185,7 @@ def set_neopixel(watts, r=1, g=1, b=1):
 
 def cycle_relays(reading, control, status):
     for relay, values in control['relay'].items():
+        print('values:', values)
         dict_key = "{}_status".format(relay)
         pin = config.RELAY_PIN_DICT[relay]
         status[dict_key] = _cycle_relay(
@@ -143,6 +204,13 @@ def cycle_intermittents(reading, control, status):
                                 **values)
     return status
 
+def get_control():
+    print('fetching control')
+    control_response = connection.get_data(config.CONTROL_URL)
+    control = parse_control_api(control_response)
+    print(control)
+    return control
+
 def initialize_status(control):
     status = {}
     status.update({"{}_status".format(r): False for r in control['relay']})
@@ -157,12 +225,14 @@ def parse_control_api(r):
         k = i['sensor']
         data_type = i['data_type']
         value = i['value']
+        limit = i['limit']
 
         if d not in control_dicts:
             control_dicts[d] = {}
         if k not in control_dicts[d]:
             control_dicts[d][k] = {}
         control_dicts[d][k][data_type] = value
+        control_dicts[d][k]['limit'] = limit
 
     return control_dicts
 
@@ -172,32 +242,35 @@ def run():
     id = helper.get_device_id()
     settime()
 
-    status = None
+    control = get_control()
+    status = initialize_status(control)
+    sgp30 = initialize_sgp30()
 
     while True:
-
         try:
             print('')
             print('starting loop')
-            led = machine.Pin(config.PIN_DICT['LED2'], machine.Pin.OUT)
+            led = Pin(config.PIN_DICT['LED2'], Pin.OUT)
             led.off()
 
             minute = time.localtime()[4]
             if minute % 60 == 0:
+                # is this working?
                 print('fetching time')
                 settime()
                 print('....current time: {}'.format(time.localtime()))
+                write_sgp30_baseline(sgp30)
 
-            print('fetching control')
-            control_response = connection.get_data(config.CONTROL_URL)
-            control = parse_control_api(control_response)
-            print(control)
-            if status is None:
-                status = initialize_status(control)
+            control = get_control()
 
             reading = {}
             reading.update(get_temperature_and_humidity())
+            reading.update(get_co2(reading, sgp30))
             # reading.update(get_moisture())
+
+            reading['temperature'] = helper.celsius_to_fahrenheit(
+                                        reading['temperature'])
+
 
             relay_status = cycle_relays(reading, control, status)
             inter_status = cycle_intermittents(reading, control, status)

@@ -31,7 +31,7 @@ DEBUG_PIN = 'SD2'
 
 RELAY_PIN_DICT = {
     'humidity': PIN_DICT['D5'],
-    'fan': PIN_DICT['D6'],
+    'co2eq': PIN_DICT['D6'],  # fan
     'temperature': PIN_DICT['D7'],
     'lights': PIN_DICT['D8'],
 }
