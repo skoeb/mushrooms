@@ -44,11 +44,9 @@ def parse_control_api(r):
     return control_dicts
 
 def fetch_control():
+    print('FETCHING CONTROL!')
     response = get_data(config.CONTROL_URL)
     control = parse_control_api(response)
     return control
-
-def patch_control(row):
-    pass
 
 init_control = fetch_control()
